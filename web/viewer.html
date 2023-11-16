@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewer</title>
+    <script src='/web/lib/webviewer.min.js'></script>
+    <style>
+        body,
+        html {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='viewer' style="width: 100%; height: 100vh; margin: auto;"></div>
+    <script>
+        let bookId = new URLSearchParams(window.location.search).get("book");
+
+        function updateReadingProgress(bookId, progress) {
+            fetch(`/api/books/${bookId}/progress`,
+                {
+                    body: JSON.stringify({ page: progress }),
+                    headers: { "content-type": "application/json" },
+                    method: "POST"
+                }).then((response) => response.json())
+                .catch((error) => {
+                    console.error(error)
+                })
+        }
+        if (bookId == null) {
+            alert("No book id provided. Going back to Main Page");
+            window.location.href = "./index.html";
+        } else {
+            fetch(`/api/books/${bookId}`).then(response => response.json())
+                .then((book) => {
+                    updateDocumentTitle(book)
+                    setReaderToBook(book)
+                    console.log(`Reading to ${book.readingPage}`)
+                    console.log(book)
+                })
+        }
+        function setReaderToBook(book) {
+            WebViewer({
+                path: 'lib', // path to the PDF.js Express'lib' folder on your server
+                licenseKey: '56RQW9XMh82mHrw7zUYG',
+                initialDoc: book.file.publicUrl,  // You can also use documents on your server
+            }, document.getElementById('viewer'))
+                .then(instance => {
+                    const docViewer = instance.docViewer;
+                    const annotManager = instance.annotManager;
+                    docViewer.on('documentLoaded', () => {
+                        docViewer.setCurrentPage(book.readingPage, false)
+                        instance.Core.documentViewer.addEventListener('pageNumberUpdated', (pageNumber) => {
+                            updateReadingProgress(book.id, pageNumber - 1)
+                        })
+                    });
+                });
+        }
+        function updateDocumentTitle(book) {
+            document.title = book.title;
+        }
+    </script>
+</body>
+
+</html>
