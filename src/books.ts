@@ -4,7 +4,8 @@ export interface BookData {
   readingPage: number,
   file: {
     localPath: string,
-    publicUrl: string
+    publicUrl: string,
+    size: number
   },
   id: string
 }
@@ -25,7 +26,8 @@ export const books: BookData[] = [
     readingPage: 0,
     file: {
       localPath: "./books/sdzx21c2z4c.pdf",
-      publicUrl: "/public/books/sdzx21c2z4c.pdf"
+      publicUrl: "/public/books/sdzx21c2z4c.pdf",
+      size: 15672493,
     },
     id: "sdzx21c2z4c"
   },
@@ -34,7 +36,8 @@ export const books: BookData[] = [
     readingPage: 0,
     file: {
       localPath: "./books/sdaww454s4c.pdf",
-      publicUrl: "/public/books/sdaww454s4c.pdf"
+      publicUrl: "/public/books/sdaww454s4c.pdf",
+      size: 47199032
 
     },
     id: "sdaww454s4c"
