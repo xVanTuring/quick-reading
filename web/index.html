@@ -20,7 +20,7 @@
                 books.forEach(book => {
                     const li = document.createElement("li");
                     const a = document.createElement("a");
-                    a.href = `./viewer.html?book=${book.id}`;
+                    a.href = `./pdfjs/web/viewer.html?book=${book.id}`;
                     a.innerHTML = book.title;
                     li.appendChild(a);
                     bookList.appendChild(li);

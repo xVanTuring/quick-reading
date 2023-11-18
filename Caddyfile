@@ -1,0 +1,14 @@
+:8080 {
+	handle /public* {
+		root * /root/workspace/quick-reading/
+		file_server
+	}
+
+	handle /api/* {
+		reverse_proxy http://localhost:3000
+	}
+    handle /* {
+		root * /root/workspace/quick-reading/web
+		file_server
+	}
+}
