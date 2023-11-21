@@ -46,14 +46,14 @@ async function loadFromParams() {
 
         updateDocumentTitle(book)
         console.log(`Reading to ${book.readingPage}`)
-        console.log()
-        if (!(await checkFileValidate(book.id, book.file.size))) {
+        const fileName = encodeURIComponent(book.id);
+        if (!(await checkFileValidate(fileName, book.file.size))) {
             console.log("File not found, downloading")
-            await downloadFile(book.file.publicUrl, book.id, book.file.size)
+            await downloadFile(book.file.publicUrl, fileName, book.file.size)
             console.log("File download completed")
         }
         /** @type {File} */
-        const bookFile = await getFileBlob(book.id)
+        const bookFile = await getFileBlob(fileName)
 
         setReaderToBook(book, await bookFile.arrayBuffer())
     }
@@ -105,14 +105,12 @@ async function downloadFile(url, fileName, totalSize) {
         //     console.log(chunk)
         // }
     }
-    // let response = await fetch(url)
-    // let buffer = await response.arrayBuffer()
+
     const opfsRoot = await navigator.storage.getDirectory();
     const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true })
     let writable = await fileHandle.createWritable()
     await writeFile(url, writable)
-    // await writable.write(buffer)
-    // await writable.close()
+
 
 }
 loadFromParams()
