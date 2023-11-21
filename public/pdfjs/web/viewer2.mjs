@@ -48,9 +48,8 @@ async function loadFromParams() {
         console.log(`Reading to ${book.readingPage}`)
         const fileName = encodeURIComponent(book.id);
         if (!(await checkFileValidate(fileName, book.file.size))) {
-            console.log("File not found, downloading")
-            await downloadFile(book.file.publicUrl, fileName, book.file.size)
-            console.log("File download completed")
+            alert("Go back!")
+            return
         }
         /** @type {File} */
         const bookFile = await getFileBlob(fileName)
@@ -80,37 +79,5 @@ async function getFileBlob(fileName) {
 
     return fileHandle.getFile()
 }
-async function downloadFile(url, fileName, totalSize) {
-    const oldTitle = document.title;
-    async function writeFile(url, writable) {
-        const response = await fetch(url);
-        const reader = response.body.getReader();
-        let totalLength = 0;
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                console.log({ done, value })
-                await writable.close()
-                document.title = oldTitle;
-                return;
-            }
-            totalLength += value.buffer.byteLength;
-            const percent = Math.floor(totalLength / totalSize * 100);
-            document.title = `${oldTitle} - ${percent}%`
-            await writable.write(value.buffer)
-        }
 
-        // Firefox only
-        // for await (const chunk of response.body) {
-        //     console.log(chunk)
-        // }
-    }
-
-    const opfsRoot = await navigator.storage.getDirectory();
-    const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true })
-    let writable = await fileHandle.createWritable()
-    await writeFile(url, writable)
-
-
-}
 loadFromParams()

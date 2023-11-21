@@ -45,3 +45,4 @@ public/books/*.pdf
 public
 !public/books
 !public/pdfjs
+surreal-db

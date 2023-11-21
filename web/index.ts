@@ -1,5 +1,6 @@
 document.querySelector("#upload-btn")!.addEventListener("click", uploadFile);
 
+const msgSpan: HTMLSpanElement = document.querySelector("#msg-span");
 
 const fileInput: HTMLInputElement = document.querySelector("#file-input");
 
@@ -15,7 +16,6 @@ function fileSelectChanged(ev: Event) {
 }
 async function uploadFile() {
     const file = fileInput.files[0];
-
     if (file) {
         const formData = new FormData();
         formData.append("file", file);
@@ -29,11 +29,7 @@ async function uploadFile() {
             if (response.ok) {
                 const book = await response.json();
                 const fileName = encodeURIComponent(book.id)
-                const opfsRoot = await navigator.storage.getDirectory();
-                const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true })
-                const writable = await fileHandle.createWritable()
-                await writable.write(file)
-                await writable.close()
+                await saveFile(fileName, file)
                 alert("File uploaded successfully")
             } else {
                 console.error("Error uploading file:", await response.text());
@@ -43,16 +39,83 @@ async function uploadFile() {
         }
     }
 }
-fetch("/api/books")
-    .then(response => response.json())
-    .then(books => {
-        const bookList = document.getElementById("book-list");
-        books.forEach(book => {
+async function loadList() {
+    const bookList = document.getElementById("book-list");
+    try {
+        const books = await fetch("/api/books")
+            .then(response => response.json())
+        for (const book of books) {
             const li = document.createElement("li");
-            const a = document.createElement("a");
-            a.href = `./pdfjs/web/viewer.html?book=${book.id}`;
-            a.innerHTML = book.title;
-            li.appendChild(a);
+            const fileName = encodeURIComponent(book.id)
+            if (!(await checkFileValidate(fileName, book.file.size))) {
+                const button = document.createElement("button");
+                button.innerText = `Download ${book.title}`;
+                button.onclick = () => {
+                    downloadFile(book.file.publicUrl, fileName, book.file.size, book.title)
+                }
+                li.appendChild(button);
+            } else {
+                const a = document.createElement("a");
+                a.href = `./pdfjs/web/viewer.html?book=${book.id}`;
+                a.innerHTML = book.title;
+                li.appendChild(a);
+            }
             bookList.appendChild(li);
-        });
-    });
+        }
+    } catch (error) {
+
+    }
+
+
+}
+
+async function checkFileValidate(fileName: string, fileSize: number) {
+    try {
+        const opfsRoot = await navigator.storage.getDirectory();
+        const fileHandle = await opfsRoot.getFileHandle(fileName)
+        if (fileHandle == null) {
+            return false
+        }
+        const file = await fileHandle.getFile()
+        console.debug(`${fileName} File size: ${file.size} vs ${fileSize}`)
+        return file.size === fileSize;
+    }
+    catch (err) {
+        return false
+    }
+}
+async function saveFile(fileName: string, file: File) {
+    const opfsRoot = await navigator.storage.getDirectory();
+    const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true })
+    const writable = await fileHandle.createWritable()
+    await writable.write(file)
+    await writable.close()
+}
+
+async function downloadFile(url: string, fileName: string, totalSize: number, bookTitle: string) {
+    async function writeFile(url: string, writable: FileSystemWritableFileStream) {
+        const response = await fetch(url);
+        const reader = response.body.getReader();
+        let totalLength = 0;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                console.log({ done, value })
+                await writable.close()
+                return;
+            }
+            totalLength += value.buffer.byteLength;
+            const percent = Math.floor(totalLength / totalSize * 100);
+            msgSpan.innerText = `Downloading: ${bookTitle} - ${percent}%`
+            await writable.write(value.buffer)
+        }
+    }
+
+    const opfsRoot = await navigator.storage.getDirectory();
+    const fileHandle = await opfsRoot.getFileHandle(fileName, { create: true })
+    let writable = await fileHandle.createWritable()
+    await writeFile(url, writable)
+}
+
+
+loadList();
