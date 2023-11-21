@@ -40,6 +40,8 @@ yarn-error.log*
 **/*.log
 package-lock.json
 **/*.bun
-
-pdfjsexpress
-books.json
+public/books/*.pdf
+.parcel-cache
+public
+!public/books
+!public/pdfjs

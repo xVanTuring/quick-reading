@@ -9,24 +9,23 @@
 
 <body>
     <div>
+        <h1>Book List: </h1>
         <ul id="book-list">
         </ul>
     </div>
-    <script>
-        fetch("/api/books")
-            .then(response => response.json())
-            .then(books => {
-                const bookList = document.getElementById("book-list");
-                books.forEach(book => {
-                    const li = document.createElement("li");
-                    const a = document.createElement("a");
-                    a.href = `./pdfjs/web/viewer.html?book=${book.id}`;
-                    a.innerHTML = book.title;
-                    li.appendChild(a);
-                    bookList.appendChild(li);
-                });
-            });
+    <br />
+    <input type="file" id="file-input">
+    <br/>
+    <input type="text" id="title-input">
+    <br/>
+    <button id="upload-btn">Upload</button>
+    <script src="./index.ts" type="module">
     </script>
+</body>
+
+</html>
+
+</div>
 </body>
 
 </html>
