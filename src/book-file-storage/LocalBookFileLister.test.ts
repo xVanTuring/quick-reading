@@ -1,15 +1,16 @@
-import { describe, test, expect } from "bun:test";
+import { describe, test, expect, beforeAll, beforeEach } from "bun:test";
 import { LocalBookFileLister } from "./LocalBookFileLister";
 import path from 'path'
 import { generateFile as generateDummyFile, prepareTempFolder } from "../util/test/temps";
 
 describe("LocalBookFileStorage", async () => {
     type file = { fileName: string, fileSize: number, filePath: string };
-    async function prepareEnvironment(): Promise<{
+    type Env = {
         tempFolder: string,
         files: Array<file>,
         randomFile(): file
-    }> {
+    };
+    async function prepareEnvironment(): Promise<Env> {
         const randomFolderName = await prepareTempFolder("LocalBookFileStorageTest");
         let files: Array<{ fileName: string, fileSize: number, filePath: string }> = [];
         for (let index = 0; index < 10; index++) {
@@ -29,9 +30,13 @@ describe("LocalBookFileStorage", async () => {
             }
         }
     }
+    let environment: Env;
+    let storage: LocalBookFileLister
+    beforeEach(async () => {
+        environment = await prepareEnvironment();
+        storage = new LocalBookFileLister(environment.tempFolder);
+    });
 
-    const environment = await prepareEnvironment();
-    const storage = new LocalBookFileLister(environment.tempFolder);
 
     test("getFiles should return an array of file names", async () => {
         const files = await storage.getFiles();

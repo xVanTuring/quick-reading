@@ -53,13 +53,21 @@ describe("SurrealBookInfoStorage", () => {
     describe("createBookInfo", () => {
         it("should create a new book info", async () => {
             const bookInfo: Omit<BookInfo, 'id'> = buildABook();
-            // Test the createBookInfo method
             let bookId = await storage.createBookInfo(bookInfo);
-            // Assert that the book info is created successfully
             const createdBookInfo = await storage.getBookInfo(bookId);
             expect(createdBookInfo).toEqual({ ...bookInfo, id: bookId });
         });
     });
+    describe("deleteBookInfo", () => {
+        it("should create a new book info", async () => {
+            const bookInfo: Omit<BookInfo, 'id'> = buildABook();
+            let bookId = await storage.createBookInfo(bookInfo);
+            await storage.deleteBookInfo(bookId)
+            const createdBookInfo = await storage.getBookInfo(bookId);
+            expect(createdBookInfo).toBeNull();
+        });
+    });
+
 
     describe("listBooks", () => {
         it("should list all books: empty", async () => {

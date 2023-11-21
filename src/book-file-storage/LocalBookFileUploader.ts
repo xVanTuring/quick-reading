@@ -8,6 +8,13 @@ export class LocalBookFileUploader implements BookFileUploader {
     constructor(private readonly localFolderPath: string) {
 
     }
+    async deleteFile(fileName: string): Promise<void> {
+        const filePath = path.join(this.localFolderPath, fileName)
+        if (!(await fs.exists(filePath))) {
+            return
+        }
+        await fs.unlink(filePath)
+    }
     private buildName() {
         const randomFileName = nanoid();
         const fileName = `${randomFileName}.pdf`;

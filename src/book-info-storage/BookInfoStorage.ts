@@ -17,5 +17,6 @@ export interface BookInfoStorage {
     getBookInfo(id: string): Promise<BookInfo | null>;
     updateBookInfo(id: string, info: Partial<BookInfo>): Promise<void>;
     createBookInfo(info: Omit<BookInfo, 'id'>, id?: string): Promise<string>;
+    deleteBookInfo(id: string): Promise<void>;
     ready(): Promise<BookInfoStorage>;
 }

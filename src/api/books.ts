@@ -88,5 +88,14 @@ export function buildBooksApi() {
         }
         return bookData
     });
+    books.delete('/:id', async ({ params: { id }, store: { storage } }) => { 
+        const bookInfo = await storage.bookInfoStorage.getBookInfo(id)
+        if (bookInfo == null) {
+            throw new NotFoundError()
+        }
+        await storage.bookInfoStorage.deleteBookInfo(id)
+        await storage.bookFileManager.uploader.deleteFile(bookInfo.file.fileName)
+        return {}
+    });
     return books
 }

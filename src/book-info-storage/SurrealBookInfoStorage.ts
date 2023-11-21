@@ -14,6 +14,7 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
     }) {
         this.db = new Surreal();
     }
+
     private isConnecting = false;
     private connectionPromise: Promise<BookInfoStorage> | null = null;
 
@@ -28,6 +29,10 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
         assert(this.connectionPromise == null);
         this.connectionPromise = this.connect().then(() => this);
         return this.connectionPromise;
+    }
+
+    async deleteBookInfo(id: string): Promise<void> {
+        await this.db.delete(id)
     }
 
     private _connected: boolean = false;
@@ -58,8 +63,15 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
     listBooks(): Promise<BookInfo[]> {
         return this.db.select("bookinfo")
     }
-    getBookInfo(id: string): Promise<BookInfo | null> {
-        return this.db.select(id)
+    async getBookInfo(id: string): Promise<BookInfo | null> {
+        const books: BookInfo[] | BookInfo = await this.db.select(id)
+        if (Array.isArray(books)) {
+            if (books.length == 0) {
+                return null
+            }
+            return books[0]
+        }
+        return books
     }
     async updateBookInfo(id: string, info: Partial<BookInfo>): Promise<void> {
         await this.db.merge(id, info)
