@@ -1,0 +1,142 @@
+import { Subprocess } from 'bun';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, } from 'bun:test';
+import Elysia from 'elysia';
+import fs from 'fs/promises';
+import path from 'path';
+import { buildBunFormBody, buildBunRequestBody } from '../util/test/elysia';
+import { startSurreal } from '../util/test/surreal';
+import { BookData, buildBooksApi } from './books';
+import { prepareTempFolder } from '../util/test/temps';
+
+const SURREALDB_PORT = 8087;
+
+describe("e2e: Books", () => {
+    beforeAll(async () => {
+        const randomFolderName = await prepareTempFolder("BooksAPI");
+        process.env["BOOK_STORAGE_PATH"] = randomFolderName
+        process.env["SURREAL_URL"] = `ws://localhost:${SURREALDB_PORT}`
+    });
+    let surrealDbProcess: Subprocess
+    beforeEach(async () => {
+        surrealDbProcess = startSurreal(SURREALDB_PORT)
+        await Bun.sleep(200);
+        if (surrealDbProcess.killed) {
+            throw new Error("Unable to start surreal");
+        }
+    });
+
+    afterEach(async () => {
+        surrealDbProcess.kill()
+        await surrealDbProcess.exited
+    })
+
+    async function buildApp() {
+        const app = buildBooksApi();
+        await app.modules
+        return app
+    }
+
+    async function getBook(app: Elysia, bookId: string) {
+        const res = await app.handle(new Request(`http://localhost/books/${bookId}`))
+            .then(res => res.json<BookData>())
+        return res;
+    }
+    async function updateBookProgress(app: Elysia, bookId: string, progress: number) {
+        const res = await app.handle(buildBunRequestBody(`http://localhost/books/${bookId}/progress`,
+            "POST", {
+            page: progress
+        }),)
+            .then(res => res.json<{}>())
+        return res;
+    }
+    async function selectFileFromTestFiles() {
+        const testFileFolderPath = "./testfiles/good";
+        const testBookPaths: string[] = []
+        for (const fileName of await fs.readdir(testFileFolderPath)) {
+            if (fileName.endsWith(".pdf")) {
+                testBookPaths.push(path.join(testFileFolderPath, fileName))
+            }
+        }
+        if (testBookPaths.length == 0) {
+            throw Error(`No Test books found in ${testFileFolderPath}`)
+        }
+        return testBookPaths[Math.floor(Math.random() * testBookPaths.length)]
+    }
+    async function addABook(app: Elysia, title = "Some Book", filePath = "testfiles/good/diaz the dictator.pdf") {
+        const res = await app.handle(buildBunFormBody("http://localhost/books", "POST", {
+            title
+        }, filePath));
+        return res.json<{ id: string; }>();
+    }
+    async function addBadBook(app: Elysia) {
+        return app.handle(buildBunFormBody("http://localhost/books", "POST", {
+            title: "Some Book"
+        }, "testfiles/bad/bad.pdf"));
+    }
+    describe("List Books", () => {
+        it("no books", async () => {
+            const app = await buildApp();
+            const response = await app.handle(new Request('http://localhost/books'));
+            expect(response.ok).toBeTrue()
+            expect(await response.json<[]>()).toStrictEqual([])
+        })
+        it("multiple books", async () => {
+            const app = await buildApp();
+            for (let index = 0; index < 10; index++) {
+                const response = await addABook(app as any);
+                expect(response.id).toBeString();
+            }
+            const res = await app.handle(new Request('http://localhost/books')).then(res => res.json<BookData[]>())
+            expect(res.length).toStrictEqual(10)
+        })
+    })
+    describe("Add Book", () => {
+        it("Add book and get it", async () => {
+            const app = await buildApp();
+            const bookAdded = await addABook(app as any, "A Book", await selectFileFromTestFiles());
+
+            const res = await getBook(app as any, bookAdded.id);
+            expect(res.id).toBe(bookAdded.id);
+            expect(res.title).toBe("A Book");
+            expect(res.readingPage).toBe(0);
+            expect(res.totalPage).toBeGreaterThan(0);
+        });
+        it("Add bad pdf", async () => {
+            const app = await buildApp();
+            const response = await addBadBook(app as any);
+            expect(response.ok).toBe(false);
+            expect(response.status).toBe(400);
+            expect(await response.text()).toBeDefined();
+        });
+    })
+
+
+    it("update date progress", async () => {
+        const app = await buildApp()
+        const response = await addABook(app as any);
+
+        const book = await getBook(app as any, response.id);
+        expect(book.readingPage).toBe(0)
+
+        const data = await updateBookProgress(app as any, response.id, 50)
+        expect(data).toEqual({});
+
+        const newBook = await getBook(app as any, response.id);
+        expect(newBook.readingPage).toBe(50)
+    })
+
+    describe("Add Books", async () => {
+        it("add book when no book", async () => {
+            const app = await buildApp()
+            const response = await addABook(app as any);
+            expect(response.id).toBeString();
+        })
+        it("add book multiple books", async () => {
+            const app = await buildApp()
+            for (let index = 0; index < 10; index++) {
+                const response = await addABook(app as any);
+                expect(response.id).toBeString();
+            }
+        })
+    })
+});

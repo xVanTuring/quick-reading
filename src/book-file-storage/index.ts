@@ -1,15 +1,13 @@
-import { BookFileLister } from "./BookFileLister"
 import { LocalBookFileLister } from "./LocalBookFileLister"
+import { BookFileManager, BookFileManagerType } from "./BookFileManager"
+import { LocalBookFileUploader } from "./LocalBookFileUploader"
 
-export enum BookFileListerType {
-    Local = "Local",
-}
 
-export function createBookFileLister<T = BookFileListerType.Local>(type: T, localPath: string): BookFileLister;
-export function createBookFileLister<T extends BookFileListerType>(type: T, ...args: any[]): BookFileLister {
+export function createBookFileManager<T = BookFileManagerType.Local>(type: T, localPath: string): BookFileManager;
+export function createBookFileManager<T extends BookFileManagerType>(type: T, ...args: any[]): BookFileManager {
     switch (type) {
-        case BookFileListerType.Local:
-            return new LocalBookFileLister(args[0])
+        case BookFileManagerType.Local:
+            return new BookFileManager(BookFileManagerType.Local, new LocalBookFileLister(args[0]), new LocalBookFileUploader(args[0]))
         default:
             throw new Error(`Unknown BookFileListerType: ${type}`)
     }

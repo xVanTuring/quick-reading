@@ -1,21 +1,21 @@
-import { BookFileListerType } from "../book-file-storage";
+import { BookFileManagerType } from "../book-file-storage/BookFileManager";
 
 export interface BookInfo {
     id: string;
     title: string;
     file: {
         fileName: string;
-        storageType: BookFileListerType;
+        storageType: BookFileManagerType;
     },
-    totalPages: number;
+    totalPage: number;
     progress: {
         page: number
     },
 }
 export interface BookInfoStorage {
     listBooks(): Promise<BookInfo[]>;
-    connect(): Promise<void>;
     getBookInfo(id: string): Promise<BookInfo | null>;
     updateBookInfo(id: string, info: Partial<BookInfo>): Promise<void>;
     createBookInfo(info: Omit<BookInfo, 'id'>, id?: string): Promise<string>;
+    ready(): Promise<BookInfoStorage>;
 }

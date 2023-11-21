@@ -13,4 +13,5 @@ export interface BookFileLister {
     getFiles(): Promise<string[]>;
     getFileInfo(fileName: string): Promise<FileInfo>;
     getSupportedFileExtensions(): string[];
+    getPublicPath(fileName: string): Promise<string>;
 }

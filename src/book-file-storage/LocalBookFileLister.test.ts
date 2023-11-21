@@ -1,42 +1,36 @@
 import { describe, test, expect } from "bun:test";
 import { LocalBookFileLister } from "./LocalBookFileLister";
-import fs from 'fs/promises';
 import path from 'path'
-import os from 'os'
-import { randomBytes } from 'crypto';
+import { generateFile as generateDummyFile, prepareTempFolder } from "../util/test/temps";
 
 describe("LocalBookFileStorage", async () => {
-    async function prepareTempFolder() {
-        const tempFolder = await fs.mkdtemp(path.join(os.tmpdir(), "LocalBookFileStorageTest-"))
-        return tempFolder;
-    }
-    async function generateFile(filePath: string, fileSize: number) {
-        const data = randomBytes(fileSize);
-        // Write the data to a file
-        await fs.writeFile(filePath, data);
-    }
+    type file = { fileName: string, fileSize: number, filePath: string };
     async function prepareEnvironment(): Promise<{
         tempFolder: string,
-        files: Array<{ fileName: string, fileSize: number, filePath: string }>
+        files: Array<file>,
+        randomFile(): file
     }> {
-        const randomFolderName = await prepareTempFolder();
-        let temp: Array<{ fileName: string, fileSize: number, filePath: string }> = [];
+        const randomFolderName = await prepareTempFolder("LocalBookFileStorageTest");
+        let files: Array<{ fileName: string, fileSize: number, filePath: string }> = [];
         for (let index = 0; index < 10; index++) {
             let item = {
                 fileName: `example_${index}.pdf`,
                 filePath: path.join(randomFolderName, `example_${index}.pdf`),
                 fileSize: Math.floor(Math.random() * 10000) + 300
             }
-            await generateFile(item.filePath, item.fileSize);
-            temp.push(item);
+            await generateDummyFile(item.filePath, item.fileSize);
+            files.push(item);
         }
         return {
             tempFolder: randomFolderName,
-            files: temp
+            files,
+            randomFile(): file {
+                return files[Math.floor(Math.random() * 9999) % files.length]
+            }
         }
     }
+
     const environment = await prepareEnvironment();
-    console.log(environment.tempFolder)
     const storage = new LocalBookFileLister(environment.tempFolder);
 
     test("getFiles should return an array of file names", async () => {
@@ -47,11 +41,10 @@ describe("LocalBookFileStorage", async () => {
     });
 
     test("getFileInfo should return the file info for a given file name", async () => {
-        const file = environment.files[Math.floor(Math.random() * 9999) % environment.files.length];
-        const fileName = file.fileName;
-        const fileInfo = await storage.getFileInfo(fileName);
+        const file = environment.randomFile();
+        const fileInfo = await storage.getFileInfo(file.fileName);
         expect(fileInfo).toBeDefined();
-        expect(fileInfo.name).toBe(fileName);
+        expect(fileInfo.name).toBe(file.fileName);
         expect(fileInfo.size).toBe(file.fileSize);
         expect(fileInfo.path.local).toBe(file.filePath);
     });

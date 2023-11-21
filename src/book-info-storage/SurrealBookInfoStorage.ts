@@ -1,8 +1,10 @@
+import assert from "assert";
 import { BookInfo, BookInfoStorage } from "./BookInfoStorage";
 import { Surreal } from 'surrealdb.node'
 
 export class SurrealBookInfoStorage implements BookInfoStorage {
-    db: Surreal;
+    protected db: Surreal;
+
     constructor(private dbConnection: {
         url: string,
         username: string;
@@ -12,7 +14,31 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
     }) {
         this.db = new Surreal();
     }
-    async connect(): Promise<void> {
+    private isConnecting = false;
+    private connectionPromise: Promise<BookInfoStorage> | null = null;
+
+    async ready(): Promise<BookInfoStorage> {
+        if (this.connected) {
+            return this;
+        }
+        if (this.isConnecting) {
+            assert(this.connectionPromise != null);
+            return this.connectionPromise;
+        }
+        assert(this.connectionPromise == null);
+        this.connectionPromise = this.connect().then(() => this);
+        return this.connectionPromise;
+    }
+
+    private _connected: boolean = false;
+    public get connected() {
+        return this._connected;
+    }
+    private async connect(): Promise<void> {
+        if (this.connected) {
+            return
+        }
+        this.isConnecting = true;
         await this.db.connect(this.dbConnection.url);
         await this.db.signin({
             username: this.dbConnection.username,
@@ -22,6 +48,8 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
             ns: this.dbConnection.namespace,
             db: this.dbConnection.database,
         })
+        this.isConnecting = false;
+        this._connected = true;
     }
     async createBookInfo(info: Omit<BookInfo, 'id'>): Promise<string> {
         const result = await this.db.create('bookinfo', info)
