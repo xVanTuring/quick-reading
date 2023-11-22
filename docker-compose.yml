@@ -24,9 +24,10 @@ services:
       - surreal
   surreal:
     image: surrealdb/surrealdb:latest
-    command: start file:/data/database.db
+    command: start file:/data
     volumes:
-      - /data
+      - surrealdb:/data
+    user: root
     environment:
       - SURREALDB_PORT=8000
       - SURREAL_PATH=file:/data
@@ -35,3 +36,4 @@ services:
 
 volumes:
   books:
+  surrealdb:
