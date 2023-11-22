@@ -11,17 +11,29 @@ export async function prepareResource() {
     const bookFileManager = createBookFileManagerFromEnv();
     let pdfium: PDFiumLibrary | null = null;
     try {
+        if (process.env["PDFIUM_INIT_THROW"]) {
+            throw new Error("PDFIUM_INIT_THROW is set.")
+        }
         pdfium = await PDFiumLibrary.init();
     } catch (error) {
-        console.error("error when init pdfium")
-        console.error(error)
+        if (process.env["BOOK_INFO_THROW"]) {
+        } else {
+            console.error("error when init pdfium")
+            console.error(error)
+        }
         throw new Error("Unable to initial pdfium")
     }
     for (let index = 0; index < RETRY_CONNECTION; index++) {
         try {
+            if (process.env["BOOK_INFO_THROW"]) {
+                throw new Error("BOOK_INFO_THROW is set.")
+            }
             await bookInfoStorage.ready();
             break;
         } catch (error) {
+            if (process.env["BOOK_INFO_THROW"]) {
+                continue
+            }
             console.error("error when connect to service")
             console.error(error)
             console.error(`Sleeping 2s. Retrying ${index + 1}/${RETRY_CONNECTION}`)
