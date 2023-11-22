@@ -1,0 +1,37 @@
+version: '3'
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    volumes:
+      - books:/books
+    ports:
+      - "8080:80"
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - SURREAL_URL=ws://surreal:8000
+      - SURREAL_NAME=root
+      - SURREAL_PASS=root
+      - SURREAL_NS=test
+      - SURREAL_DB=test
+    volumes:
+      - books:/app/public/books
+    links:
+      - surreal
+  surreal:
+    image: surrealdb/surrealdb:latest
+    command: start file:/data/database.db
+    volumes:
+      - /data
+    environment:
+      - SURREALDB_PORT=8000
+      - SURREAL_PATH=file:/data
+      - SURREAL_USER=root
+      - SURREAL_PASS=root
+
+volumes:
+  books:
