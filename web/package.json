@@ -1,0 +1,12 @@
+{
+  "name": "quick-reading-web",
+  "scripts": {
+    "build": "parcel build ./index.html --dist-dir ./dist"
+  },
+  "devDependencies": {
+    "parcel": "^2.10.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

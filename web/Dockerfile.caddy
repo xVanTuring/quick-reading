@@ -1,0 +1,18 @@
+FROM archlinux AS build
+RUN pacman -Sy --noconfirm curl unzip
+RUN curl -fsSL https://bun.sh/install | bash && cp ~/.bun/bin/bun /usr/bin/bun
+WORKDIR /tmp/build
+COPY package.json .
+COPY bun.lockb .
+RUN bun install
+COPY . .
+RUN bun parcel build ./index.html --dist-dir ./dist
+
+
+FROM caddy
+COPY Caddyfile /etc/caddy/Caddyfile
+WORKDIR /app
+COPY --from=build /tmp/dev/dist .
+COPY public/pdfjs pdfjs
+VOLUME ["/books"]
+EXPOSE 80

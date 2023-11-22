@@ -5,7 +5,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "bun run --watch src/index.ts",
     "surreal": "surreal start file:./surreal-db --user root --pass root --bind 0.0.0.0:8000",
-    "build:index": "parcel build ./web/index.html --dist-dir ./dist",
     "compose:build": "docker compose build",
     "podman-compose:build": "podman compose build"
   },
@@ -16,7 +15,6 @@
     "surrealdb.node": "^0.3.0"
   },
   "devDependencies": {
-    "bun-types": "latest",
-    "parcel": "^2.10.3"
+    "bun-types": "latest"
   }
 }

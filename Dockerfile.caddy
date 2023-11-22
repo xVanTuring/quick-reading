@@ -1,6 +1,0 @@
-FROM caddy
-COPY Caddyfile /etc/caddy/Caddyfile
-WORKDIR /app
-COPY dist/* .
-COPY public/pdfjs pdfjs
-VOLUME ["/books"]
