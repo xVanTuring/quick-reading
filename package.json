@@ -6,8 +6,8 @@
     "dev": "bun run --watch src/index.ts",
     "surreal": "surreal start file:./surreal-db --user root --pass root --bind 0.0.0.0:8000",
     "build:index": "parcel build ./web/index.html --dist-dir ./dist",
-    "compose:build": "docker-compose build",
-    "podman-compose:build": "podman-compose build"
+    "compose:build": "docker compose build",
+    "podman-compose:build": "podman compose build"
   },
   "dependencies": {
     "@hyzyla/pdfium": "^1.0.2",
