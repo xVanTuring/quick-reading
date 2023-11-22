@@ -1,16 +1,19 @@
 import Elysia, { NotFoundError, ParseError, t } from "elysia";
 import { SetupResource, setup } from "./setup";
-export interface BookData {
-    title: string,
-    readingPage: number,
-    totalPage: number,
-    file: {
-        localPath: string,
-        publicUrl: string,
-        size: number
-    },
-    id: string
-}
+const BookDataDTO = t.Object({
+    file: t.Object({
+        localPath: t.String(),
+        publicUrl: t.String(),
+        size: t.Number()
+    }),
+    totalPage: t.Number(),
+    id: t.String(),
+    readingPage: t.Number(),
+    title: t.String()
+});
+
+export type BookData = (typeof BookDataDTO)["static"];
+
 export function buildBooksApi(resource: SetupResource) {
     const books = new Elysia({ prefix: '/books' }).use(setup(resource));
     books.get('/', async ({ store: { storage } }) => {
@@ -32,6 +35,8 @@ export function buildBooksApi(resource: SetupResource) {
             books.push(bookData)
         }
         return books;
+    }, {
+        response: t.Array(BookDataDTO)
     });
 
     books.post('/', async ({ pdfium, body, store: { storage } }) => {
@@ -58,6 +63,9 @@ export function buildBooksApi(resource: SetupResource) {
         body: t.Object({
             title: t.String(),
             file: t.File()
+        }),
+        response: t.Object({
+            id: t.String()
         })
     });
 
@@ -87,6 +95,8 @@ export function buildBooksApi(resource: SetupResource) {
             title: bookInfo.title
         }
         return bookData
+    }, {
+        response: BookDataDTO
     });
     books.delete('/:id', async ({ params: { id }, store: { storage } }) => {
         const bookInfo = await storage.bookInfoStorage.getBookInfo(id)
@@ -96,6 +106,8 @@ export function buildBooksApi(resource: SetupResource) {
         await storage.bookInfoStorage.deleteBookInfo(id)
         await storage.bookFileManager.uploader.deleteFile(bookInfo.file.fileName)
         return {}
+    }, {
+        response: t.Object({})
     });
     return books
 }
