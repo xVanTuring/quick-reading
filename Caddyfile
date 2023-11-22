@@ -1,4 +1,4 @@
-:80 {
+https://read.xvanturing.tech {
 	handle_path /public/books/* {
 		root * /books
 		file_server browse
