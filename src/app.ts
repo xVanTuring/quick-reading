@@ -1,9 +1,9 @@
 import { Elysia } from "elysia";
-import { api } from "./api";
+import { buildApi } from "./api";
 
-export function buildApp() {
+export async function buildApp() {
     const app = new Elysia();
-    app.use(api);
-    return app;
+    const api = await buildApi();
+    return app.use(api);
 }
 

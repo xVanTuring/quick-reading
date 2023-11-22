@@ -1,11 +1,12 @@
 import Elysia from "elysia";
 import { SurrealBookInfoStorage } from "../book-info-storage";
 import { createBookFileManager } from "../book-file-storage";
-import { BookFileManagerType } from "../book-file-storage/BookFileManager";
+import { BookFileManager, BookFileManagerType } from "../book-file-storage/BookFileManager";
 import { PDFiumLibrary } from "@hyzyla/pdfium";
+import { BookInfoStorage } from "../book-info-storage/BookInfoStorage";
 
-
-export const setup = async (app: Elysia) => {
+const RETRY_CONNECTION = 10;
+export async function prepareResource() {
     const bookInfoStorage = createBookInfoStorageFromEnv();
     const bookFileManager = createBookFileManagerFromEnv();
     let pdfium: PDFiumLibrary | null = null;
@@ -14,17 +15,40 @@ export const setup = async (app: Elysia) => {
     } catch (error) {
         console.error("error when init pdfium")
         console.error(error)
+        throw new Error("Unable to initial pdfium")
     }
-    try {
-        await bookInfoStorage.ready();
-    } catch (error) {
-        console.error("error when connect to service")
-        console.error(error)
+    for (let index = 0; index < RETRY_CONNECTION; index++) {
+        try {
+            await bookInfoStorage.ready();
+            break;
+        } catch (error) {
+            console.error("error when connect to service")
+            console.error(error)
+            console.error(`Sleeping 2s. Retrying ${index + 1}/${RETRY_CONNECTION}`)
+            await Bun.sleep(2000);
+        }
     }
-    return app.state('storage', {
+    if (!bookInfoStorage.connected) {
+        throw new Error("Unable to connect to book info storage")
+    }
+    return {
+        pdfium,
         bookInfoStorage,
         bookFileManager
-    }).decorate('pdfium', pdfium!)
+    }
+}
+
+export interface SetupResource {
+    pdfium: PDFiumLibrary, bookInfoStorage: BookInfoStorage, bookFileManager: BookFileManager
+}
+
+export const setup = ({ pdfium, bookInfoStorage, bookFileManager }: SetupResource) => {
+    return (app: Elysia) => {
+        return app.state('storage', {
+            bookInfoStorage,
+            bookFileManager
+        }).decorate('pdfium', pdfium)
+    }
 }
 
 

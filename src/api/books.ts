@@ -1,5 +1,5 @@
 import Elysia, { NotFoundError, ParseError, t } from "elysia";
-import { setup } from "./setup";
+import { SetupResource, setup } from "./setup";
 export interface BookData {
     title: string,
     readingPage: number,
@@ -11,8 +11,8 @@ export interface BookData {
     },
     id: string
 }
-export function buildBooksApi() {
-    const books = new Elysia({ prefix: '/books' }).use(setup);
+export function buildBooksApi(resource: SetupResource) {
+    const books = new Elysia({ prefix: '/books' }).use(setup(resource));
     books.get('/', async ({ store: { storage } }) => {
         const bookInfos = await storage.bookInfoStorage.listBooks();
         const books: BookData[] = []
@@ -88,7 +88,7 @@ export function buildBooksApi() {
         }
         return bookData
     });
-    books.delete('/:id', async ({ params: { id }, store: { storage } }) => { 
+    books.delete('/:id', async ({ params: { id }, store: { storage } }) => {
         const bookInfo = await storage.bookInfoStorage.getBookInfo(id)
         if (bookInfo == null) {
             throw new NotFoundError()

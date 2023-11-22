@@ -1,8 +1,10 @@
 import { Elysia, } from "elysia";
 import { buildBooksApi } from "./books";
+import { prepareResource } from "./setup";
 
-
-export const api = new Elysia({ prefix: '/api' });
-const books = buildBooksApi();
-await books.modules
-api.use(books)
+export async function buildApi() {
+    const api = new Elysia({ prefix: '/api' });
+    const resource = await prepareResource();
+    const books = buildBooksApi(resource);
+    return api.use(books);
+}

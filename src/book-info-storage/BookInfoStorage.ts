@@ -19,4 +19,5 @@ export interface BookInfoStorage {
     createBookInfo(info: Omit<BookInfo, 'id'>, id?: string): Promise<string>;
     deleteBookInfo(id: string): Promise<void>;
     ready(): Promise<BookInfoStorage>;
+    get connected(): boolean;
 }
