@@ -1,25 +1,14 @@
 import { SurrealBookInfoStorage } from "./SurrealBookInfoStorage";
 import { BookInfo } from "./BookInfoStorage";
-import { describe, beforeEach, expect, it, afterEach, beforeAll } from 'bun:test'
-import { Subprocess } from "bun";
-import { startSurreal } from "../util/test/surreal";
-import { BookFileManagerType } from "../book-file-storage/BookFileManager";
-const SURREALDB_PORT = 8087;
+import { describe, beforeEach, expect, it } from 'bun:test'
 
-describe("SurrealBookInfoStorage", () => {
-    beforeAll(() => {
-        process.env["SURREAL_URL"] = `ws://localhost:${SURREALDB_PORT}`
-    });
+import { SurrealDescribe } from "../util/test/surreal";
+import { BookFileManagerType } from "../book-file-storage/BookFileManager";
+
+SurrealDescribe("unit: SurrealBookInfoStorage", () => {
 
     let storage: SurrealBookInfoStorage;
-
-    let surrealDbProcess: Subprocess
     beforeEach(async () => {
-        surrealDbProcess = startSurreal(SURREALDB_PORT)
-        await Bun.sleep(200);
-        if (surrealDbProcess.killed) {
-            throw new Error("Unable to start surreal");
-        }
         storage = new SurrealBookInfoStorage({
             url: process.env["SURREAL_URL"]!,
             username: "root",
@@ -29,12 +18,6 @@ describe("SurrealBookInfoStorage", () => {
         });
         await storage.ready();
     });
-
-    afterEach(async () => {
-        surrealDbProcess.kill()
-        await Bun.sleep(200);
-        await surrealDbProcess.exited
-    })
 
     function buildABook(): Omit<BookInfo, 'id'> {
         return {
@@ -69,7 +52,7 @@ describe("SurrealBookInfoStorage", () => {
     });
 
 
-    describe("listBooks", () => {
+    describe("List Books", () => {
         it("should list all books: empty", async () => {
             const books = await storage.listBooks();
             expect(books.length).toBe(0);
@@ -84,7 +67,7 @@ describe("SurrealBookInfoStorage", () => {
 
 
 
-    describe("updateBookInfo", () => {
+    describe("Update Book Info", () => {
         it("should update book info by id", async () => {
             const bookInfo = buildABook();
             const bookId = await storage.createBookInfo(bookInfo);

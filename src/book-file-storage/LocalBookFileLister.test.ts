@@ -3,7 +3,7 @@ import { LocalBookFileLister } from "./LocalBookFileLister";
 import path from 'path'
 import { generateFile as generateDummyFile, prepareTempFolder } from "../util/test/temps";
 
-describe("LocalBookFileStorage", async () => {
+describe("unit: LocalBookFileStorage", async () => {
     type file = { fileName: string, fileSize: number, filePath: string };
     type Env = {
         tempFolder: string,

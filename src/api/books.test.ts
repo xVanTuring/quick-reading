@@ -1,39 +1,23 @@
-import { Subprocess } from 'bun';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, } from 'bun:test';
+import { beforeAll, describe, expect, it, } from 'bun:test';
 import Elysia from 'elysia';
 import fs from 'fs/promises';
 import path from 'path';
 import { buildBunFormBody, buildBunRequestBody } from '../util/test/elysia';
-import { startSurreal } from '../util/test/surreal';
+import { SurrealDescribe } from '../util/test/surreal';
 import { BookData, buildBooksApi } from './books';
 import { prepareTempFolder } from '../util/test/temps';
+import { prepareResource } from './setup';
 
-const SURREALDB_PORT = 8087;
 
-describe("e2e: Books", () => {
+SurrealDescribe("e2e: Books", () => {
     beforeAll(async () => {
         const randomFolderName = await prepareTempFolder("BooksAPI");
         process.env["BOOK_STORAGE_PATH"] = randomFolderName
-        process.env["SURREAL_URL"] = `ws://localhost:${SURREALDB_PORT}`
     });
-    let surrealDbProcess: Subprocess
-    beforeEach(async () => {
-        surrealDbProcess = startSurreal(SURREALDB_PORT)
-        await Bun.sleep(200);
-        if (surrealDbProcess.killed) {
-            throw new Error("Unable to start surreal");
-        }
-    });
-
-    afterEach(async () => {
-        surrealDbProcess.kill()
-        await surrealDbProcess.exited
-    })
 
     async function buildApp() {
-        const app = buildBooksApi();
-        await app.modules
-        return app
+        const resource = await prepareResource()
+        return buildBooksApi(resource);
     }
 
     async function getExistingBook(app: Elysia, bookId: string) {
@@ -49,11 +33,16 @@ describe("e2e: Books", () => {
         return res;
     }
     async function updateBookProgress(app: Elysia, bookId: string, progress: number) {
-        const res = await app.handle(buildBunRequestBody(`http://localhost/books/${bookId}/progress`,
+        const response = await app.handle(buildBunRequestBody(`http://localhost/books/${bookId}/progress`,
             "POST", {
             page: progress
-        })).then(res => res.json<{}>())
-        return res;
+        }));
+        const text = await response.text();
+        if (!response.ok) {
+            console.log(text)
+        }
+        expect(response.ok).toBe(true)
+        return JSON.parse(text);
     }
     async function selectFileFromTestFiles() {
         const testFileFolderPath = "./testfiles/good";
