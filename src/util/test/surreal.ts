@@ -23,11 +23,14 @@ export function SurrealDescribe(name: string, action: () => Promise<void> | void
         beforeEach(async () => {
             surrealDbProcess = startSurreal(SURREALDB_PORT)
             await Bun.sleep(200);
+            if (surrealDbProcess.killed) {
+                throw new Error("Unable to start surreal");
+            }
         });
 
         afterEach(async () => {
             surrealDbProcess.kill()
-            await Bun.sleep(200);
+            await surrealDbProcess.exited;
         })
         await action()
     });

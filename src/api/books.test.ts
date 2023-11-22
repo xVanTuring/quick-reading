@@ -72,6 +72,9 @@ SurrealDescribe("e2e: Books", () => {
         it("no books", async () => {
             const app = await buildApp();
             const response = await app.handle(new Request('http://localhost/books'));
+            if (!response.ok) {
+                console.error(await response.text())
+            }
             expect(response.ok).toBeTrue()
             expect(await response.json<[]>()).toStrictEqual([])
         })
