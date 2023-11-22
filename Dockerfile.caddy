@@ -1,0 +1,17 @@
+FROM node:lts-alpine3.17 AS build
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /tmp/build
+COPY web/package.json .
+COPY web/pnpm-lock.yaml .
+RUN pnpm install
+COPY web .
+RUN pnpm parcel build ./index.html --dist-dir ./dist
+
+
+FROM caddy
+COPY Caddyfile /etc/caddy/Caddyfile
+WORKDIR /app
+COPY --from=build /tmp/dev/dist .
+COPY public/pdfjs pdfjs
+VOLUME ["/books"]
+EXPOSE 80
