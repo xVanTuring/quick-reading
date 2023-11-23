@@ -6,9 +6,24 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
 
     constructor(protected readonly surrealConnection: SurrealConnection) {
     }
-    
+
     protected get db() {
         return this.surrealConnection.db
+    }
+
+    private _currentUser: string | null = null
+
+    get currentUser() {
+        if (this._currentUser == null) {
+            throw new Error("current user is null");
+        }
+        return this._currentUser
+    }
+
+    toUser(userId: string): BookInfoStorage {
+        const clone = new SurrealBookInfoStorage(this.surrealConnection);
+        clone._currentUser = userId;
+        return clone;
     }
 
     private connectionPromise: Promise<BookInfoStorage> | null = null;
@@ -27,21 +42,26 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
     }
 
     async deleteBookInfo(id: string): Promise<void> {
-        await this.db.delete(id)
+        await this.db.query(`delete $id WHERE owner=$owner`, { id, owner: this.currentUser })
     }
 
     public get connected() {
         return this.surrealConnection.connected;
     }
-    async createBookInfo(info: Omit<BookInfo, 'id'>): Promise<string> {
-        const result = await this.db.create('bookinfo', info)
+
+    async createBookInfo(info: Omit<BookInfo, 'id' | 'owner'>): Promise<string> {
+        const result = await this.db.create('bookinfo', { ...info, owner: this.currentUser })
         return result[0].id
     }
+
     listBooks(): Promise<BookInfo[]> {
-        return this.db.select("bookinfo")
+        return this.db.query("select * from bookinfo where owner=$owner", {
+            owner: this.currentUser
+        });
     }
+
     async getBookInfo(id: string): Promise<BookInfo | null> {
-        const books: BookInfo[] | BookInfo = await this.db.select(id)
+        const books: BookInfo[] | BookInfo = await this.db.query("select * from $id where owner=$owner", { id, owner: this.currentUser })
         if (Array.isArray(books)) {
             if (books.length == 0) {
                 return null
@@ -50,8 +70,13 @@ export class SurrealBookInfoStorage implements BookInfoStorage {
         }
         return books
     }
+
     async updateBookInfo(id: string, info: Partial<BookInfo>): Promise<void> {
-        await this.db.merge(id, info)
+        await this.db.query(`update $id MERGE $data where owner=$owner`, {
+            id,
+            owner: this.currentUser,
+            data: info
+        })
     }
 
 }

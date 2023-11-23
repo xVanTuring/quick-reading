@@ -1,14 +1,13 @@
 import { SurrealBookInfoStorage } from "./SurrealBookInfoStorage";
-import { BookInfo } from "./BookInfoStorage";
-import { describe, beforeEach, expect, it } from 'bun:test'
+import { BookInfo, BookInfoStorage } from "./BookInfoStorage";
+import { beforeEach, describe, expect, it } from 'bun:test'
 
 import { SurrealDescribe } from "../util/test/surreal";
 import { BookFileManagerType } from "../book-file-storage/BookFileManager";
 import { SurrealConnection } from "../connection/surreal-connection";
 
 SurrealDescribe("unit: SurrealBookInfoStorage", () => {
-
-    let storage: SurrealBookInfoStorage;
+    let storage: BookInfoStorage;
     beforeEach(async () => {
         const surrealConnection = new SurrealConnection({
             url: process.env["SURREAL_URL"]!,
@@ -17,11 +16,11 @@ SurrealDescribe("unit: SurrealBookInfoStorage", () => {
             namespace: "test",
             database: "test",
         })
-        storage = new SurrealBookInfoStorage(surrealConnection);
+        storage = new SurrealBookInfoStorage(surrealConnection).toUser("admin");
         await storage.ready();
     });
 
-    function buildABook(): Omit<BookInfo, 'id'> {
+    function createBookInfo(): Omit<BookInfo, 'id' | 'owner'> {
         return {
             title: "Test Book",
             file: {
@@ -35,51 +34,99 @@ SurrealDescribe("unit: SurrealBookInfoStorage", () => {
         };
     }
 
-    describe("createBookInfo", () => {
-        it("should create a new book info", async () => {
-            const bookInfo: Omit<BookInfo, 'id'> = buildABook();
-            let bookId = await storage.createBookInfo(bookInfo);
-            const createdBookInfo = await storage.getBookInfo(bookId);
-            expect(createdBookInfo).toEqual({ ...bookInfo, id: bookId });
-        });
-    });
-    describe("deleteBookInfo", () => {
-        it("should create a new book info", async () => {
-            const bookInfo: Omit<BookInfo, 'id'> = buildABook();
-            let bookId = await storage.createBookInfo(bookInfo);
-            await storage.deleteBookInfo(bookId)
-            const createdBookInfo = await storage.getBookInfo(bookId);
-            expect(createdBookInfo).toBeNull();
-        });
+
+    it("shall be connected", async () => {
+        expect(storage.connected).toBeTrue()
     });
 
-
-    describe("List Books", () => {
-        it("should list all books: empty", async () => {
-            const books = await storage.listBooks();
-            expect(books.length).toBe(0);
-        });
-        it("should list all books: one book", async () => {
-            const bookInfo: Omit<BookInfo, 'id'> = buildABook();
-            await storage.createBookInfo(bookInfo);
-            const books = await storage.listBooks();
-            expect(books.length).toBe(1);
-        });
+    it("shall create a new book", async () => {
+        const bookInfo: Omit<BookInfo, 'id' | 'owner'> = createBookInfo();
+        let bookId = await storage.createBookInfo(bookInfo);
+        const createdBookInfo = await storage.getBookInfo(bookId);
+        expect(createdBookInfo).toEqual({ ...bookInfo, id: bookId, owner: storage.currentUser });
     });
 
-
-
-    describe("Update Book Info", () => {
-        it("should update book info by id", async () => {
-            const bookInfo = buildABook();
-            const bookId = await storage.createBookInfo(bookInfo);
-            const updatedBookInfo: Partial<BookInfo> = {
-                title: "New Title 7781"
-            };
-            await storage.updateBookInfo(bookId, updatedBookInfo);
-            const retrievedBookInfo = await storage.getBookInfo(bookId);
-            expect(retrievedBookInfo?.title).toEqual(updatedBookInfo.title as any);
-        });
+    it("shall not access book when deleted", async () => {
+        const bookInfo: Omit<BookInfo, 'id' | 'owner'> = createBookInfo();
+        let bookId = await storage.createBookInfo(bookInfo);
+        await storage.deleteBookInfo(bookId)
+        const createdBookInfo = await storage.getBookInfo(bookId);
+        expect(createdBookInfo).toBeNull();
     });
+
+    it("shall list all its book: empty", async () => {
+        const books = await storage.listBooks();
+        expect(books.length).toBe(0);
+    });
+
+    it("shall list all its book", async () => {
+        const bookInfo: Omit<BookInfo, 'id' | 'owner'> = createBookInfo();
+        await storage.createBookInfo(bookInfo);
+        const books = await storage.listBooks();
+        expect(books.length).toBe(1);
+    });
+
+    it("shall update its book", async () => {
+        const bookInfo = createBookInfo();
+        const bookId = await storage.createBookInfo(bookInfo);
+        const updatedBookInfo: Partial<BookInfo> = {
+            title: "New Title 7781"
+        };
+        await storage.updateBookInfo(bookId, updatedBookInfo);
+        const retrievedBookInfo = await storage.getBookInfo(bookId);
+        expect(retrievedBookInfo?.title).toEqual(updatedBookInfo.title as any);
+    });
+
+    describe("two user shall be isolated", () => {
+        async function createTwoUserAndBooks(): Promise<[BookInfoStorage, BookInfoStorage, string, string]> {
+            const user1Storage = storage.toUser("user1")
+            const user2Storage = storage.toUser("user2")
+            const bookInfo: Omit<BookInfo, 'id' | 'owner'> = createBookInfo();
+            const id1 = await user1Storage.createBookInfo(bookInfo);
+            const id2 = await user2Storage.createBookInfo(bookInfo);
+            return [user1Storage, user2Storage, id1, id2]
+        }
+        async function getTwoUserBooks([user1Storage, user2Storage]: [BookInfoStorage, BookInfoStorage]) {
+            return Promise.all([user1Storage.listBooks(), user2Storage.listBooks()])
+        }
+        it("shall not see each other's books", async () => {
+            const [user1Storage, user2Storage] = await createTwoUserAndBooks();
+
+            const [user1Books, user2Books] = await getTwoUserBooks([user1Storage, user2Storage]);
+            expect(user1Books.length).toBe(1);
+            expect(user2Books.length).toBe(1);
+        })
+        it("shall not inspect other's books", async () => {
+            const [user1Storage, user2Storage, id1, id2] = await createTwoUserAndBooks();
+            const book1 = await user1Storage.getBookInfo(id2)
+            const book2 = await user2Storage.getBookInfo(id1)
+            expect(book1).toBe(null)
+            expect(book2).toBe(null)
+        })
+        it("shall not delete other's books", async () => {
+            const [user1Storage, user2Storage, id1, id2] = await createTwoUserAndBooks();
+            await user2Storage.deleteBookInfo(id1)
+            await user1Storage.deleteBookInfo(id2)
+
+            const [user1Books, user2Books] = await getTwoUserBooks([user1Storage, user2Storage]);
+            expect(user1Books.length).toBe(1);
+            expect(user2Books.length).toBe(1);
+        })
+
+        it("shall not change other's books", async () => {
+            const [user1Storage, user2Storage, id1, id2] = await createTwoUserAndBooks();
+            await user2Storage.updateBookInfo(id1, {
+                progress: { page: 60 }
+            })
+            await user1Storage.updateBookInfo(id2, {
+                progress: { page: 40 }
+            })
+            for (const books of await getTwoUserBooks([user1Storage, user2Storage])) {
+                expect(books.length).toBe(1);
+                expect(books[0].progress.page).toBe(0);
+            }
+        })
+
+    })
 });
 
