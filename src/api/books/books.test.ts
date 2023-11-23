@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, } from 'bun:test';
+import { beforeAll, expect, it, } from 'bun:test';
 import Elysia from 'elysia';
 import fs from 'fs/promises';
 import path from 'path';
@@ -6,8 +6,9 @@ import { buildBunFormBody, buildBunRequestBody } from '../../util/test/elysia';
 import { SurrealDescribe } from '../../util/test/surreal';
 import { BookData, booksApi } from './books';
 import { prepareTempFolder } from '../../util/test/temps';
-import { prepareConnection, setup } from '../setup/setup';
-import { setupBooks } from '../setup/book.setup';
+import { prepareConnection, setupConnection } from '../setup/connection.setup';
+import { deriveBooks, setupBooks } from '../setup/book.setup';
+import { setupUserId } from '../setup/user-id.setup';
 
 
 SurrealDescribe("e2e: Books", () => {
@@ -17,11 +18,14 @@ SurrealDescribe("e2e: Books", () => {
         const randomFolderName = await prepareTempFolder("BooksAPI");
         process.env["BOOK_STORAGE_PATH"] = randomFolderName
     });
+
     async function buildApp() {
         const connection = await prepareConnection()
         const app = new Elysia()
-            .use(setup(connection))
+            .use(setupConnection(connection))
+            .use(setupUserId)
             .use(setupBooks)
+            .use(deriveBooks)
             .use(booksApi);
         return app;
     }
@@ -77,34 +81,34 @@ SurrealDescribe("e2e: Books", () => {
     }
     //#endregion
 
-    describe("List Books", () => {
-        it("no books", async () => {
-            const app = await buildApp();
-            const response = await app.handle(new Request(URL_PREFIX));
-            if (!response.ok) {
-                console.error(await response.text())
-            }
-            expect(response.ok).toBeTrue()
-            expect(await response.json<[]>()).toStrictEqual([])
-        })
-        it("multiple books", async () => {
-            const app = await buildApp();
-            for (let index = 0; index < 10; index++) {
-                const response = await addABook(app as any);
-                expect(response.id).toBeString();
-            }
-            const res = await app.handle(new Request(URL_PREFIX)).then(res => res.json<BookData[]>())
-            expect(res.length).toStrictEqual(10)
-        })
-    })
+    it("shall list all books: no books", async () => {
+        const app = await buildApp();
+        const response = await app.handle(new Request(URL_PREFIX));
+        if (!response.ok) {
+            console.error(await response.text())
+        }
+        expect(response.ok).toBeTrue()
+        expect(await response.json<[]>()).toStrictEqual([])
+    });
 
-    it("Get non-existing Book", async () => {
+    it("shall list all books", async () => {
+        const app = await buildApp();
+        for (let index = 0; index < 10; index++) {
+            const response = await addABook(app as any);
+            expect(response.id).toBeString();
+        }
+        const res = await app.handle(new Request(URL_PREFIX)).then(res => res.json<BookData[]>())
+        expect(res.length).toStrictEqual(10)
+    });
+
+    it("should not get non-existing book", async () => {
         const app = await buildApp();
         const notFoundResponse = await app.handle(new Request(`${URL_PREFIX}nnnnnn`))
         expect(notFoundResponse.ok).toBe(false)
         expect(notFoundResponse.status).toBe(404)
-    })
-    it("Delete existing Book", async () => {
+    });
+
+    it("shall not get deleted book", async () => {
         const app = await buildApp();
         const response = await addABook(app as any);
         expect(response.id).toBeDefined();
@@ -116,9 +120,9 @@ SurrealDescribe("e2e: Books", () => {
         const notFoundResponse = await app.handle(new Request(`${URL_PREFIX}${response.id}`))
         expect(notFoundResponse.ok).toBe(false)
         expect(notFoundResponse.status).toBe(404)
+    });
 
-    })
-    it("Delete non-existing Book", async () => {
+    it("shall not delete non-existing book", async () => {
         const app = await buildApp();
         const deleteResponse = await app.handle(new Request(`${URL_PREFIX}adasdsd`, {
             method: "DELETE"
@@ -126,9 +130,9 @@ SurrealDescribe("e2e: Books", () => {
         expect(deleteResponse.ok).toBe(false)
         expect(deleteResponse.status).toBe(404)
 
-    })
+    });
 
-    it("Update date progress", async () => {
+    it("shall update the reading progress", async () => {
         const app = await buildApp()
         const response = await addABook(app as any);
 
@@ -140,16 +144,17 @@ SurrealDescribe("e2e: Books", () => {
 
         const newBook = await getExistingBook(app as any, response.id);
         expect(newBook.readingPage).toBe(50)
-    })
+    });
 
-    it("Add multiple books", async () => {
+    it("shall add multiple books", async () => {
         const app = await buildApp()
         for (let index = 0; index < 10; index++) {
             const response = await addABook(app as any);
             expect(response.id).toBeString();
         }
-    })
-    it("Add book and get it", async () => {
+    });
+
+    it("shall access book-info added", async () => {
         const app = await buildApp();
         const bookAdded = await addABook(app as any, "A Book", await selectFileFromTestFiles());
 
@@ -159,7 +164,8 @@ SurrealDescribe("e2e: Books", () => {
         expect(res.readingPage).toBe(0);
         expect(res.totalPage).toBeGreaterThan(0);
     });
-    it("Add bad pdf", async () => {
+
+    it("shall not upload a bad pdf book", async () => {
         const app = await buildApp();
         const response = await addBadBook(app as any);
         expect(response.ok).toBe(false);

@@ -1,8 +1,9 @@
 import { it, expect, afterEach, beforeEach } from 'bun:test';
 import { SurrealDescribe } from '../../util/test/surreal';
-import { prepareConnection, setup } from './setup'
+import { prepareConnection, setupConnection } from './connection.setup'
 import Elysia from 'elysia';
-import { setupBooks } from './book.setup';
+import { deriveBooks, setupBooks } from './book.setup';
+import { setupUserId } from './user-id.setup';
 
 SurrealDescribe("unit: Setup Book", async () => {
     beforeEach(() => {
@@ -14,20 +15,26 @@ SurrealDescribe("unit: Setup Book", async () => {
     it("setup successfully", async () => {
         const connection = await prepareConnection();
         const app = new Elysia()
-            .use(setup(connection))
+            .use(setupConnection(connection))
+            .use(setupUserId)
             .use(setupBooks)
+            .use(deriveBooks)
             .get('/status', ({ bookFileManager, bookInfoStorage }) => {
                 return {
                     bookFileManagerDefined: bookFileManager != null,
                     bookInfoStorageDefined: bookInfoStorage != null,
-                    bookInfoStorageConnected: bookInfoStorage.connected
+                    bookInfoStorageConnected: bookInfoStorage.connected,
+                    bookInfoStorageUser: bookInfoStorage.currentUser != null
                 }
             })
-        const res = await app.handle(new Request('http://localhost/status')).then((r) => r.json())
-        expect(res).toStrictEqual({
+        const response = await app.handle(new Request('http://localhost/status'))
+        expect(response.ok).toBeTrue()
+        const json = await response.json()
+        expect(json).toStrictEqual({
             bookFileManagerDefined: true,
             bookInfoStorageDefined: true,
-            bookInfoStorageConnected: true
+            bookInfoStorageConnected: true,
+            bookInfoStorageUser: true
         })
     })
 });
