@@ -37,12 +37,12 @@ export interface SetupResource {
     connections: ConnectionMap
 }
 
-export function setup({ pdfium, connections }: SetupResource) {
+export function setupConnection({ pdfium, connections }: SetupResource) {
     return (app: Elysia<string>) => {
         return app.decorate('pdfium', pdfium).decorate('connections', connections);
     };
 }
-export type SetupElysia = ReturnType<ReturnType<typeof setup>>
+export type SetupConnection = ReturnType<ReturnType<typeof setupConnection>>
 
 export interface ConnectionMap {
     surrealConnection: SurrealConnection | null
