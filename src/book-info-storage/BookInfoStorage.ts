@@ -12,6 +12,9 @@ export interface BookInfo {
         page: number
     },
 }
+export enum BookInfoStorageType {
+    Surreal = "Surreal",
+}
 export interface BookInfoStorage {
     listBooks(): Promise<BookInfo[]>;
     getBookInfo(id: string): Promise<BookInfo | null>;

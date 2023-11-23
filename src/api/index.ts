@@ -1,10 +1,10 @@
 import { Elysia, } from "elysia";
-import { buildBooksApi } from "./books";
-import { prepareResource } from "./setup";
+import { booksApi } from "./books/books";
+import { prepareConnection, setup } from "./setup/setup";
+import { setupBooks } from "./setup/book.setup";
 
 export async function buildApi() {
     const api = new Elysia({ prefix: '/api' });
-    const resource = await prepareResource();
-    const books = buildBooksApi(resource);
-    return api.use(books);
+    const connection = await prepareConnection();
+    return api.use(setup(connection)).use(setupBooks).group('/books', booksApi);
 }

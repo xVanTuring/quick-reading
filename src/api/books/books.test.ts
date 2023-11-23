@@ -2,38 +2,44 @@ import { beforeAll, describe, expect, it, } from 'bun:test';
 import Elysia from 'elysia';
 import fs from 'fs/promises';
 import path from 'path';
-import { buildBunFormBody, buildBunRequestBody } from '../util/test/elysia';
-import { SurrealDescribe } from '../util/test/surreal';
-import { BookData, buildBooksApi } from './books';
-import { prepareTempFolder } from '../util/test/temps';
-import { prepareResource } from './setup';
+import { buildBunFormBody, buildBunRequestBody } from '../../util/test/elysia';
+import { SurrealDescribe } from '../../util/test/surreal';
+import { BookData, booksApi } from './books';
+import { prepareTempFolder } from '../../util/test/temps';
+import { prepareConnection, setup } from '../setup/setup';
+import { setupBooks } from '../setup/book.setup';
 
 
 SurrealDescribe("e2e: Books", () => {
+    const URL_PREFIX = "http://localhost/"
+    //#region utility
     beforeAll(async () => {
         const randomFolderName = await prepareTempFolder("BooksAPI");
         process.env["BOOK_STORAGE_PATH"] = randomFolderName
     });
-
     async function buildApp() {
-        const resource = await prepareResource()
-        return buildBooksApi(resource);
+        const connection = await prepareConnection()
+        const app = new Elysia()
+            .use(setup(connection))
+            .use(setupBooks)
+            .use(booksApi);
+        return app;
     }
 
     async function getExistingBook(app: Elysia, bookId: string) {
-        const res = await app.handle(new Request(`http://localhost/books/${bookId}`))
+        const res = await app.handle(new Request(`${URL_PREFIX}${bookId}`))
             .then(res => res.json<BookData>())
         return res;
     }
 
     async function deleteBook(app: Elysia, bookId: string) {
-        const res = await app.handle(new Request(`http://localhost/books/${bookId}`, {
+        const res = await app.handle(new Request(`${URL_PREFIX}${bookId}`, {
             method: "DELETE"
         })).then(res => res.json<{}>())
         return res;
     }
     async function updateBookProgress(app: Elysia, bookId: string, progress: number) {
-        const response = await app.handle(buildBunRequestBody(`http://localhost/books/${bookId}/progress`,
+        const response = await app.handle(buildBunRequestBody(`${URL_PREFIX}${bookId}/progress`,
             "POST", {
             page: progress
         }));
@@ -57,21 +63,24 @@ SurrealDescribe("e2e: Books", () => {
         }
         return testBookPaths[Math.floor(Math.random() * testBookPaths.length)]
     }
+
     async function addABook(app: Elysia, title = "Some Book", filePath = "testfiles/good/diaz the dictator.pdf") {
-        const res = await app.handle(buildBunFormBody("http://localhost/books", "POST", {
+        const res = await app.handle(buildBunFormBody(URL_PREFIX, "POST", {
             title
         }, filePath));
         return res.json<{ id: string; }>();
     }
     async function addBadBook(app: Elysia) {
-        return app.handle(buildBunFormBody("http://localhost/books", "POST", {
+        return app.handle(buildBunFormBody(URL_PREFIX, "POST", {
             title: "Some Book"
         }, "testfiles/bad/bad.pdf"));
     }
+    //#endregion
+
     describe("List Books", () => {
         it("no books", async () => {
             const app = await buildApp();
-            const response = await app.handle(new Request('http://localhost/books'));
+            const response = await app.handle(new Request(URL_PREFIX));
             if (!response.ok) {
                 console.error(await response.text())
             }
@@ -84,14 +93,14 @@ SurrealDescribe("e2e: Books", () => {
                 const response = await addABook(app as any);
                 expect(response.id).toBeString();
             }
-            const res = await app.handle(new Request('http://localhost/books')).then(res => res.json<BookData[]>())
+            const res = await app.handle(new Request(URL_PREFIX)).then(res => res.json<BookData[]>())
             expect(res.length).toStrictEqual(10)
         })
     })
 
     it("Get non-existing Book", async () => {
         const app = await buildApp();
-        const notFoundResponse = await app.handle(new Request(`http://localhost/books/nnnnnn`))
+        const notFoundResponse = await app.handle(new Request(`${URL_PREFIX}nnnnnn`))
         expect(notFoundResponse.ok).toBe(false)
         expect(notFoundResponse.status).toBe(404)
     })
@@ -104,14 +113,14 @@ SurrealDescribe("e2e: Books", () => {
         const deleteResponse = await deleteBook(app as any, response.id)
         expect(deleteResponse).toStrictEqual({})
 
-        const notFoundResponse = await app.handle(new Request(`http://localhost/books/${response.id}`))
+        const notFoundResponse = await app.handle(new Request(`${URL_PREFIX}${response.id}`))
         expect(notFoundResponse.ok).toBe(false)
         expect(notFoundResponse.status).toBe(404)
 
     })
     it("Delete non-existing Book", async () => {
         const app = await buildApp();
-        const deleteResponse = await app.handle(new Request(`http://localhost/books/adasdsd`, {
+        const deleteResponse = await app.handle(new Request(`${URL_PREFIX}adasdsd`, {
             method: "DELETE"
         }))
         expect(deleteResponse.ok).toBe(false)

@@ -4,18 +4,20 @@ import { describe, beforeEach, expect, it } from 'bun:test'
 
 import { SurrealDescribe } from "../util/test/surreal";
 import { BookFileManagerType } from "../book-file-storage/BookFileManager";
+import { SurrealConnection } from "../connection/surreal-connection";
 
 SurrealDescribe("unit: SurrealBookInfoStorage", () => {
 
     let storage: SurrealBookInfoStorage;
     beforeEach(async () => {
-        storage = new SurrealBookInfoStorage({
+        const surrealConnection = new SurrealConnection({
             url: process.env["SURREAL_URL"]!,
             username: "root",
             password: "root",
             namespace: "test",
             database: "test",
-        });
+        })
+        storage = new SurrealBookInfoStorage(surrealConnection);
         await storage.ready();
     });
 

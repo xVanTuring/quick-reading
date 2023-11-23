@@ -1,5 +1,5 @@
-import Elysia, { NotFoundError, ParseError, t } from "elysia";
-import { SetupResource, setup } from "./setup";
+import { NotFoundError, ParseError, t } from "elysia";
+import { SetupBooks } from "../setup/book.setup";
 const BookDataDTO = t.Object({
     file: t.Object({
         localPath: t.String(),
@@ -14,17 +14,16 @@ const BookDataDTO = t.Object({
 
 export type BookData = (typeof BookDataDTO)["static"];
 
-export function buildBooksApi(resource: SetupResource) {
-    const books = new Elysia({ prefix: '/books' }).use(setup(resource));
-    books.get('/', async ({ store: { storage } }) => {
-        const bookInfos = await storage.bookInfoStorage.listBooks();
+export function booksApi(books: SetupBooks) {
+    books.get('/', async ({ bookInfoStorage, bookFileManager }) => {
+        const bookInfos = await bookInfoStorage.listBooks();
         const books: BookData[] = []
         for (const book of bookInfos) {
-            const fileInfo = await storage.bookFileManager.lister.getFileInfo(book.file.fileName)
+            const fileInfo = await bookFileManager.lister.getFileInfo(book.file.fileName)
             let bookData: BookData = {
                 file: {
                     localPath: fileInfo.path.local,
-                    publicUrl: await storage.bookFileManager.lister.getPublicPath(book.file.fileName),
+                    publicUrl: await bookFileManager.lister.getPublicPath(book.file.fileName),
                     size: fileInfo.size
                 },
                 totalPage: book.totalPage,
@@ -38,16 +37,15 @@ export function buildBooksApi(resource: SetupResource) {
     }, {
         response: t.Array(BookDataDTO)
     });
-
-    books.post('/', async ({ pdfium, body, store: { storage } }) => {
+    books.post('/', async ({ pdfium, body, bookInfoStorage, bookFileManager }) => {
         const buffer = await body.file.arrayBuffer()
         try {
             const document = await pdfium.loadDocument(Buffer.from(buffer))
-            const fileName = await storage.bookFileManager.uploader.uploadFormArrayBuffer(buffer)
-            const bookId = await storage.bookInfoStorage.createBookInfo({
+            const fileName = await bookFileManager.uploader.uploadFormArrayBuffer(buffer)
+            const bookId = await bookInfoStorage.createBookInfo({
                 file: {
                     fileName: fileName,
-                    storageType: storage.bookFileManager.type
+                    storageType: bookFileManager.type
                 },
                 progress: {
                     page: 0
@@ -69,24 +67,24 @@ export function buildBooksApi(resource: SetupResource) {
         })
     });
 
-    books.post('/:id/progress', async ({ params: { id }, body, store: { storage } }) => {
-        await storage.bookInfoStorage.updateBookInfo(id, { progress: { page: body.page } })
+    books.post('/:id/progress', async ({ params: { id }, body, bookInfoStorage, bookFileManager }) => {
+        await bookInfoStorage.updateBookInfo(id, { progress: { page: body.page } })
         return {};
     }, {
         body: t.Object({
             page: t.Number()
         })
     });
-    books.get('/:id', async ({ params: { id }, store: { storage } }) => {
-        const bookInfo = await storage.bookInfoStorage.getBookInfo(id)
+    books.get('/:id', async ({ params: { id }, bookInfoStorage, bookFileManager }) => {
+        const bookInfo = await bookInfoStorage.getBookInfo(id)
         if (bookInfo == null) {
             throw new NotFoundError()
         }
-        const fileInfo = await storage.bookFileManager.lister.getFileInfo(bookInfo.file.fileName)
+        const fileInfo = await bookFileManager.lister.getFileInfo(bookInfo.file.fileName)
         const bookData: BookData = {
             file: {
                 localPath: fileInfo.path.local,
-                publicUrl: await storage.bookFileManager.lister.getPublicPath(bookInfo.file.fileName),
+                publicUrl: await bookFileManager.lister.getPublicPath(bookInfo.file.fileName),
                 size: fileInfo.size
             },
             id: bookInfo.id,
@@ -98,16 +96,16 @@ export function buildBooksApi(resource: SetupResource) {
     }, {
         response: BookDataDTO
     });
-    books.delete('/:id', async ({ params: { id }, store: { storage } }) => {
-        const bookInfo = await storage.bookInfoStorage.getBookInfo(id)
+    books.delete('/:id', async ({ params: { id }, bookInfoStorage, bookFileManager }) => {
+        const bookInfo = await bookInfoStorage.getBookInfo(id)
         if (bookInfo == null) {
             throw new NotFoundError()
         }
-        await storage.bookInfoStorage.deleteBookInfo(id)
-        await storage.bookFileManager.uploader.deleteFile(bookInfo.file.fileName)
+        await bookInfoStorage.deleteBookInfo(id)
+        await bookFileManager.uploader.deleteFile(bookInfo.file.fileName)
         return {}
     }, {
         response: t.Object({})
     });
-    return books
+    return books;
 }
