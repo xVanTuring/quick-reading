@@ -24,7 +24,8 @@ async function uploadFile() {
         try {
             const response = await fetch("/api/books", {
                 method: "POST",
-                body: formData
+                body: formData,
+                headers: { "Authorization": "Bearer " + localStorage.getItem("token") },
             })
             if (response.ok) {
                 const book = await response.json();
@@ -42,7 +43,7 @@ async function uploadFile() {
 async function loadList() {
     const bookList = document.getElementById("book-list");
     try {
-        const books = await fetch("/api/books")
+        const books = await fetch("/api/books", { headers: { "Authorization": "Bearer " + localStorage.getItem("token") }, })
             .then(response => response.json())
         for (const book of books) {
             const li = document.createElement("li");
@@ -94,7 +95,7 @@ async function saveFile(fileName: string, file: File) {
 
 async function downloadFile(url: string, fileName: string, totalSize: number, bookTitle: string) {
     async function writeFile(url: string, writable: FileSystemWritableFileStream) {
-        const response = await fetch(url);
+        const response = await fetch(url, { headers: { "Authorization": "Bearer " + localStorage.getItem("token") }, });
         const reader = response.body.getReader();
         let totalLength = 0;
         while (true) {
@@ -117,5 +118,10 @@ async function downloadFile(url: string, fileName: string, totalSize: number, bo
     await writeFile(url, writable)
 }
 
-
-loadList();
+; (function main() {
+    if (!localStorage.getItem("token")) {
+        window.location.replace("/login.html")
+    } else {
+        loadList();
+    }
+})();

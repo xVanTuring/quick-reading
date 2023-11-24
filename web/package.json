@@ -1,7 +1,8 @@
 {
   "name": "quick-reading-web",
   "scripts": {
-    "build": "parcel build ./index.html --dist-dir ./dist"
+    "build": "parcel build ./index.html ./login.html --dist-dir ./dist",
+    "build:watch": "parcel watch ./index.html ./login.html --dist-dir ./dist"
   },
   "devDependencies": {
     "parcel": "^2.10.3"

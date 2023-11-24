@@ -8,7 +8,7 @@ function updateReadingProgress(bookId, progress) {
     fetch(`/api/books/${bookId}/progress`,
         {
             body: JSON.stringify({ page: progress }),
-            headers: { "content-type": "application/json" },
+            headers: { "content-type": "application/json", "Authorization": "Bearer" + localStorage.getItem("token") },
             method: "POST"
         }).then((response) => response.json())
         .catch((error) => {
@@ -41,7 +41,9 @@ async function loadFromParams() {
         alert("No book id provided. Going back to Main Page");
         window.location.href = "/";
     } else {
-        const response = await fetch(`/api/books/${bookId}`)
+        const response = await fetch(`/api/books/${bookId}`, {
+            headers: { "Authorization": "Bearer " + localStorage.getItem("token") },
+        })
         const book = await response.json()
 
         updateDocumentTitle(book)

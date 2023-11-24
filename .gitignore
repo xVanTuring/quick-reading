@@ -42,7 +42,6 @@ package-lock.json
 **/*.bun
 public/books/*.pdf
 .parcel-cache
-public
 !public/books
 !public/pdfjs
 surreal-db

@@ -1,0 +1,13 @@
+:8180 {
+	handle_path /public/books/* {
+		root * ./public/books
+		file_server browse
+	}
+	handle /api/* {
+		reverse_proxy http://localhost:3000
+	}
+	handle /* {
+		root * ./web/dist
+		file_server browse
+	}
+}
