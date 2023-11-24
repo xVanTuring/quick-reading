@@ -9,6 +9,9 @@
     "podman-compose:build": "podman compose build"
   },
   "dependencies": {
+    "@elysiajs/bearer": "^0.7.0",
+    "@elysiajs/jwt": "^0.7.0",
+    "@elysiajs/swagger": "^0.7.4",
     "@hyzyla/pdfium": "^1.0.2",
     "elysia": "latest",
     "nanoid": "^5.0.3",

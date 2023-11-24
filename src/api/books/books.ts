@@ -35,7 +35,10 @@ export function booksApi(books: SetupBooks) {
         }
         return books;
     }, {
-        response: t.Array(BookDataDTO)
+        response: t.Array(BookDataDTO),
+        detail: {
+            tags: ['Books']
+        }
     });
     books.post('/', async ({ pdfium, body, bookInfoStorage, bookFileManager }) => {
         const buffer = await body.file.arrayBuffer()
@@ -64,16 +67,22 @@ export function booksApi(books: SetupBooks) {
         }),
         response: t.Object({
             id: t.String()
-        })
+        }),
+        detail: {
+            tags: ['Books']
+        },
     });
 
-    books.post('/:id/progress', async ({ params: { id }, body, bookInfoStorage, bookFileManager }) => {
+    books.post('/:id/progress', async ({ params: { id }, body, bookInfoStorage }) => {
         await bookInfoStorage.updateBookInfo(id, { progress: { page: body.page } })
         return {};
     }, {
         body: t.Object({
             page: t.Number()
-        })
+        }),
+        detail: {
+            tags: ['Books']
+        },
     });
     books.get('/:id', async ({ params: { id }, bookInfoStorage, bookFileManager }) => {
         const bookInfo = await bookInfoStorage.getBookInfo(id)
@@ -94,7 +103,10 @@ export function booksApi(books: SetupBooks) {
         }
         return bookData
     }, {
-        response: BookDataDTO
+        response: BookDataDTO,
+        detail: {
+            tags: ['Books']
+        },
     });
     books.delete('/:id', async ({ params: { id }, bookInfoStorage, bookFileManager }) => {
         const bookInfo = await bookInfoStorage.getBookInfo(id)
@@ -105,7 +117,10 @@ export function booksApi(books: SetupBooks) {
         await bookFileManager.uploader.deleteFile(bookInfo.file.fileName)
         return {}
     }, {
-        response: t.Object({})
+        response: t.Object({}),
+        detail: {
+            tags: ['Books']
+        },
     });
     return books;
 }
