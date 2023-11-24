@@ -8,7 +8,7 @@ function updateReadingProgress(bookId, progress) {
     fetch(`/api/books/${bookId}/progress`,
         {
             body: JSON.stringify({ page: progress }),
-            headers: { "content-type": "application/json", "Authorization": "Bearer" + localStorage.getItem("token") },
+            headers: { "content-type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token") },
             method: "POST"
         }).then((response) => response.json())
         .catch((error) => {
