@@ -18,6 +18,9 @@ services:
       - SURREAL_PASS=root
       - SURREAL_NS=test
       - SURREAL_DB=test
+      - BOOK_INFO_STORAGE_TYPE=Surreal
+      - USER_INFO_STORAGE_TYPE=Surreal
+      - JWT_SECRET=jjjjjjjjjjjjjjjj
     volumes:
       - books:/app/public/books
     links:
