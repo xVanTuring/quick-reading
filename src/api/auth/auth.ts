@@ -1,7 +1,8 @@
-import { t } from "elysia";
+import { NotFoundError, t } from "elysia";
 import jwt from "@elysiajs/jwt";
 import { MergeElysiaDecorator } from "../../util/type/elysia-merge";
 import { SetupUserInfo } from "../setup/user.setup";
+import { DuplicatedError } from "../../util/error/DuplicatedError";
 type JwtElysia = ReturnType<typeof jwt<"jwt">>
 export function authApi(app: MergeElysiaDecorator<JwtElysia, SetupUserInfo>) {
     app.post('/signup', async ({ userInfoStorage, body, jwt }) => {
@@ -20,7 +21,7 @@ export function authApi(app: MergeElysiaDecorator<JwtElysia, SetupUserInfo>) {
 
         } catch (error) {
             console.error(error)
-            throw Error("User already exists")
+            throw new DuplicatedError("User name is existed")
         }
     }, {
         body: t.Object({
@@ -44,11 +45,11 @@ export function authApi(app: MergeElysiaDecorator<JwtElysia, SetupUserInfo>) {
     app.post('/login', async ({ jwt, body, userInfoStorage }) => {
         const userInfo = await userInfoStorage.getUserInfoByName(body.username)
         if (userInfo == null) {
-            throw new Error("User not found")
+            throw new NotFoundError("User not found")
         }
         const matched = await Bun.password.verify(body.password, userInfo.password)
         if (!matched) {
-            throw new Error("Password not matched")
+            throw new NotFoundError("User not found")
         }
         return {
             token: await jwt.sign({

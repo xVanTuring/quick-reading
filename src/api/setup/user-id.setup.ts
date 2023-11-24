@@ -2,9 +2,9 @@ import bearer from "@elysiajs/bearer";
 import type { jwt } from "@elysiajs/jwt";
 import { NotFoundError } from "elysia";
 import { MergeElysiaDecorator } from "../../util/type/elysia-merge";
+import { UnauthorizedError } from "../../util/error/UnauthorizedError";
 
-class UnauthorizedError extends Error {
-}
+
 type JwtElysia = ReturnType<typeof jwt<"jwt">>
 type BearerElysia = ReturnType<typeof bearer>
 export function setupUserId(app: MergeElysiaDecorator<JwtElysia, BearerElysia>) {
